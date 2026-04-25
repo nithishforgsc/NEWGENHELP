@@ -24,7 +24,7 @@ To run this project locally:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/nithishforgsc/NEWGENHELP.git](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git)
+    git clone [https://github.com/nithishforgsc/NEWGENHELP.git](https://github.com/nithishforgsc/NEWGENHELP.git)
     ```
 2.  **Add your API Key:**
     * Open `script.js`.
