@@ -1,0 +1,21 @@
+{
+  "name": "NEWGENHELP AI",
+  "short_name": "NewGenHelp",
+  "description": "Smart Resource Allocation & Crisis Management",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B0E14",
+  "theme_color": "#0B0E14",
+  "icons":[
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3253/3253013.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3253/3253013.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

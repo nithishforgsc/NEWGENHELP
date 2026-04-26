@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEWGENHELP | ETHICAL DECISION ENGINE</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0B0E14">
+    
+    <!-- FONTS & ICONS -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- MAPS & VISUALIZATION -->
+    <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <!-- AI & ML -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <!-- GOOGLE TRANSLATE API -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <!-- LOCAL WEBGPU AI CORE -->
+    <script type="module"> import * as webllm from "https://esm.run/@mlc-ai/web-llm"; window.webllm = webllm; </script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- TACTICAL TOAST CONTAINER -->
+    <div id="toast-container"></div>
+
+    <!-- AR COMPASS OVERLAY -->
+    <div id="arOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; background:#000;">
+        <video id="arVideo" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+        <div id="arArrow" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:120px; color:var(--success); text-shadow:0 0 30px rgba(74, 222, 128, 0.8); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);">⬆️</div>
+        <div id="arDist" style="position:absolute; bottom:120px; width:100%; text-align:center; font-size:28px; color:#fff; font-weight:800; text-shadow:0 0 15px #000; letter-spacing: 2px;">CALCULATING...</div>
+        <button class="btn-cancel" style="position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:80%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);" onclick="window.closeAR()">ABORT AR VIEW</button>
+    </div>
+
+    <!-- OFFLINE BANNER -->
+    <div id="offlineBanner" style="display:none; background:rgba(248, 113, 113, 0.8); backdrop-filter:blur(10px); color:#fff; text-align:center; padding:15px; position:fixed; top:0; width:100%; z-index:9999; font-weight:600; letter-spacing:2px;">
+        ⚡ P2P MESH FALLBACK ACTIVE: SYSTEM RELIABILITY SECURED ⚡
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fullscreen-flex">
+        <div class="form-ui">
+            <h2 class="gradient-text" style="margin-bottom:10px; font-size:2.8rem; text-align:center;">NEWGENHELP</h2>
+            <p style="margin-bottom:25px; color:var(--primary-muted); font-size:0.85rem; font-weight:600; text-align:center; letter-spacing: 1px;">DECENTRALIZED ETHICAL DECISION ENGINE</p>
+            
+            <label for="loginName">NODE IDENTIFICATION <span style="color:var(--success); margin-left:5px;">✔</span></label>
+            <input type="text" id="loginName" placeholder="ENTER CALLSIGN / NAME" required>
+            
+            <label for="loginPin">SECURITY PIN (ENCRYPTED)</label>
+            <input type="password" id="loginPin" placeholder="ENTER 4-DIGIT PIN" maxlength="4" required>
+            
+            <div class="input-row" style="margin-bottom: 20px;">
+                <div style="flex:1;">
+                    <label for="loginRole">ACCOUNT ROLE</label>
+                    <select id="loginRole" onchange="document.getElementById('orgDetails').style.display = (this.value === 'org' || this.value === 'admin') ? 'block' : 'none'">
+                        <option value="volunteer">TACTICAL VOLUNTEER</option>
+                        <option value="donor">SUPPLY DONOR</option>
+                        <option value="org">ORGANIZATION / NGO</option>
+                        <option value="admin">SYSTEM ADMIN</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="orgDetails" style="display:none; margin-bottom: 20px; background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(74, 222, 128, 0.3);">
+                <label for="loginOrgType" style="color:var(--success);">ORGANIZATION TYPE</label>
+                <select id="loginOrgType" style="margin-bottom: 0; background: rgba(0,0,0,0.5);">
+                    <option value="ngo">NGO / RELIEF AGENCY</option>
+                    <option value="hospital">HOSPITAL / MEDICAL CENTER</option>
+                    <option value="gov">LOCAL AUTHORITY</option>
+                    <option value="bloodbank">BLOOD BANK</option>
+                </select>
+            </div>
+            
+            <div class="input-row">
+                <div style="flex:1;">
+                    <label for="loginVehicle">LOGISTICS CAPACITY</label>
+                    <select id="loginVehicle">
+                        <option value="none">🚶 MICRO-TASKS</option>
+                        <option value="bike">🛵 LIGHT RECON</option>
+                        <option value="car">🚗 STANDARD TRANSPORT</option>
+                        <option value="truck">🚚 HEAVY FREIGHT</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label for="loginSkill">CRISIS SPECIALTY</label>
+                    <select id="loginSkill">
+                        <option value="general">🤝 GENERAL RELIEF</option>
+                        <option value="medical">⚕️ TRAUMA / FIRST AID</option>
+                        <option value="rescue">🚁 TACTICAL RESCUE</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn-main" onclick="window.loginUser(event)" style="margin-top:10px;">INITIALIZE SECURE NODE 🚀</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP STRUCTURE -->
+    <div id="mainApp" style="display:none;">
+        <datalist id="rOptions"></datalist><datalist id="dOptions"></datalist>
+        
+        <nav>
+            <div style="display:flex; align-items:center; gap:20px;">
+                <div class="logo" onclick="window.showPage('home'); window.scrollTo({top: 0, behavior: 'smooth'});">NEWGEN<span>HELP</span></div>
+                <div id="userInfo" style="display:none; flex-direction:column; background:rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding:8px 18px; border-radius:30px;">
+                    <h3 id="welcomeText" style="font-size:0.8rem; color:var(--primary); margin:0; font-family:var(--font-body); font-weight:600;"></h3>
+                    <span id="userStats" style="font-size:0.7rem; color:var(--success); font-weight:600; letter-spacing: 1px;"></span>
+                </div>
+            </div>
+            <div class="nav-links">
+                <div id="google_translate_element"></div>
+
+                <button class="nav-link" onclick="window.showPage('home')">OVERVIEW</button>
+                <button class="nav-link" data-allowed-roles="volunteer,admin" onclick="window.showPage('request')">SIGNAL UPLINK</button>
+                <button class="nav-link" data-allowed-roles="donor,org,admin" onclick="window.showPage('donate')">SUPPLY CACHE</button>
+                <button class="nav-link" data-allowed-roles="volunteer,org,admin" onclick="window.showPage('profile')">PROFILE</button>
+                <button class="nav-link" data-allowed-roles="org,admin" onclick="window.showPage('dashboard')">ANALYTICS</button>
+                
+                <button class="btn-cta role-hidden" data-allowed-roles="admin" style="padding: 10px 20px; font-size: 0.75rem;" onclick="window.showPage('admin')">DIAGNOSTICS ⚙️</button>
+                <button class="btn-cta action-btn role-hidden" data-allowed-roles="volunteer,org,admin" style="padding: 10px 20px; font-size: 0.75rem;" onclick="window.showPage('volunteer')">DECISION ENGINE</button>
+                
+                <!-- 🚨 1KM CHAOS ALERT BUTTON - AVAILABLE TO ALL USERS -->
+                <button class="btn-cancel" style="padding: 10px 20px; font-size: 0.75rem; margin-top:0; width:auto; border-radius:30px; border-color:#F87171; color:#F87171; box-shadow: 0 0 10px rgba(248,113,113,0.3);" onclick="window.triggerChaosAlert()">🚨 CHAOS ALERT</button>
+                
+                <button id="navLogoutBtn" class="btn-cancel" style="padding: 10px 20px; font-size: 0.75rem; margin-top:0; width:auto; border-radius:30px;" onclick="window.logoutUser()">DISCONNECT</button>
+            </div>
+        </nav>
+
+        <main>
+            <!-- HOME SECTION -->
+            <section id="home" class="page-section active">
+                <div class="hero">
+                    <div class="quote-slider">
+                        <div class="slide"><h2>"Not all of us can do great things. But we can do small things with great love."</h2><p>- MOTHER TERESA</p></div><div class="slide"><h2>"We rise by lifting others."</h2><p>- ROBERT INGERSOLL</p></div><div class="slide"><h2>"No act of kindness, no matter how small, is ever wasted."</h2><p>- AESOP</p></div>
+                    </div>
+                    <div style="display:inline-block; border:1px solid var(--success); color:var(--success); padding:8px 16px; border-radius:30px; font-size:0.75rem; font-weight:700; letter-spacing:1px; margin-bottom:20px; background:rgba(74, 222, 128, 0.1);">🌐 GOOGLE SOLUTION CHALLENGE 2026</div>
+                    <h1 class="gradient-text text-xl">DECENTRALIZED ETHICAL<br>DECISION ENGINE.</h1>
+                    <p class="hero-sub" style="font-weight:400; color:var(--primary);">Converting unstructured, unreliable, and offline emergency signals into prioritized, actionable decisions using decentralized edge intelligence.</p>
+                    
+                    <div class="hero-actions" style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+                        <button class="btn-main" style="width: auto; padding: 18px 45px; border-color: #F87171; color: #F87171; box-shadow: 0 0 15px rgba(248,113,113,0.4);" onclick="window.triggerChaosAlert()">🚨 TRIGGER 1KM CHAOS ALERT</button>
+                        <button class="btn-main role-hidden" data-allowed-roles="volunteer,admin" style="width: auto; padding: 18px 45px;" onclick="window.showPage('request')">📡 SIGNAL UPLINK</button>
+                        <button class="btn-main action-btn role-hidden" data-allowed-roles="volunteer,org,admin" style="width: auto; padding: 18px 45px;" onclick="window.showPage('volunteer')">🗺️ DECISION MATRIX</button>
+                    </div>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card"><div class="icon-circle" style="color:var(--success); border-color:var(--success);">🧠</div><h3 style="font-size:1.1rem;">AI SWARM: SOLVES CHAOS</h3><p style="color:var(--primary-muted); font-size:0.85rem; line-height:1.6;">Translates messy unstructured SOS inputs into clean tactical JSON via Agents.</p></div>
+                    <div class="feature-card"><div class="icon-circle" style="color:var(--warning); border-color:var(--warning);">⚡</div><h3 style="font-size:1.1rem;">EDGE AI: SOLVES CONNECTIVITY</h3><p style="color:var(--primary-muted); font-size:0.85rem; line-height:1.6;">Zero-internet dependency. WebGPU offline processing ensures reliability.</p></div>
+                    <div class="feature-card"><div class="icon-circle" style="color:var(--accent); border-color:var(--accent);">⚖️</div><h3 style="font-size:1.1rem;">MATRIX: SOLVES ALLOCATION</h3><p style="color:var(--primary-muted); font-size:0.85rem; line-height:1.6;">Not first-come-first-serve. Dynamically weighs urgency, vulnerability, and distance.</p></div>
+                </div>
+            </section>
+
+            <!-- SIGNAL UPLINK SECTION -->
+            <section id="request" class="page-section">
+                <div class="form-ui" style="max-width: 650px;">
+                    <h2 class="gradient-text" style="margin-bottom:10px;">📡 SIGNAL UPLINK (SOS)</h2>
+                    <p style="color:var(--primary-muted); font-size:0.8rem; margin-bottom:20px;">The real world is messy. Input chaotic data here, and watch the AI structure it for decision-making.</p>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                        <button class="btn-main" style="width:calc(33% - 7px); font-size:0.65rem; padding:10px; border-color:#8B5CF6; color:#8B5CF6;" onclick="window.startSentinelMode()">🎧 ACOUSTIC SENTINEL</button>
+                        <button class="btn-main" style="width:calc(33% - 7px); font-size:0.65rem; padding:10px; border-color:var(--warning); color:var(--warning);" onclick="window.startSilentSOS()">🖐️ SILENT SOS (CV)</button>
+                        <button class="btn-main" style="width:calc(33% - 7px); font-size:0.65rem; padding:10px; border-color:var(--success); color:var(--success);" onclick="window.generatePaperBeacon()">📄 OFFLINE BEACON</button>
+                    </div>
+
+                    <div id="sentinelUI" class="elite-ui-box"><h4 style="color:#8B5CF6; margin-bottom:10px;">🎧 AMBIENT SENTINEL MODE ACTIVE</h4><p style="font-size:0.75rem; color:var(--primary-muted); margin-bottom:10px;">Listening locally for disaster audio signatures.</p><div style="width:100%; height:10px; background:#222; border-radius:5px; overflow:hidden;"><div id="audioMeter" style="height:100%; width:0%; background:#8B5CF6; transition:width 0.1s;"></div></div><div id="sentinelCountdown" style="display:none; color:var(--danger); font-size:1.5rem; font-weight:800; margin-top:10px;">CRITICAL EVENT DETECTED. AUTO-SOS IN <span id="sCount">10</span>s</div><button class="btn-cancel" style="padding:10px; margin-top:15px;" onclick="window.stopSentinelMode()">DEACTIVATE SENTINEL</button></div>
+                    
+                    <div id="silentSosUI" class="elite-ui-box"><h4 style="color:var(--warning); margin-bottom:10px;">🖐️ MEDIA-PIPE SILENT SOS</h4><p style="font-size:0.75rem; color:var(--primary-muted); margin-bottom:10px;">Make a closed fist to trigger distress signal silently without typing.</p><div style="position:relative; width:100%; border-radius:12px; overflow:hidden; border:2px solid var(--warning);"><video id="silentVideo" autoplay playsinline style="width:100%; display:block;"></video><canvas id="silentCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas></div><button class="btn-cancel" style="padding:10px; margin-top:15px;" onclick="window.stopSilentSOS()">DEACTIVATE CAMERA</button></div>
+                    
+                    <div id="paperBeaconUI" class="elite-ui-box"><h4 style="color:var(--success); margin-bottom:10px;">📄 ENCRYPTED PAPER BEACON</h4><p style="font-size:0.75rem; color:var(--primary-muted); margin-bottom:10px;">For 0% battery scenarios. Operatives scan it to import data.</p><div id="paperBeaconCanvas" style="background:#fff; padding:20px; border-radius:12px; margin: 0 auto; width: max-content;"></div><button class="btn-cancel" style="padding:10px; margin-top:15px;" onclick="document.getElementById('paperBeaconUI').style.display='none'">CLOSE BEACON</button></div>
+                    
+                    <div class="ai-input-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><p style="font-size:0.75rem; color:var(--accent); font-weight:600; margin:0; letter-spacing:1px;">🤖 MULTI-AGENT DATA STRUCTURING</p><button class="mic-btn" onclick="window.startVoiceAI(event)" title="Speak your emergency">🎤</button></div>
+                        <textarea id="aiSosText" rows="3" placeholder="DESCRIBE EMERGENCY (E.G. 'FLOOD RISING, NEED INSULIN...')" style="width:100%; font-weight:400;"></textarea>
+                        <div id="swarmTerminal" style="display:none; background:#000; border:1px solid #333; padding:15px; border-radius:8px; font-family:monospace; font-size:0.7rem; color:#4ADE80; margin-top:10px; text-transform:none; max-height:150px; overflow-y:auto;"></div>
+                        <button type="button" class="btn-main" style="width:100%; margin-top:10px; padding:12px; font-size:0.8rem;" onclick="window.parseAIText(event)">✨ INITIATE INTELLIGENCE SWARM</button>
+                    </div>
+                    
+                    <div id="aiExplanationArea"></div>
+                    
+                    <div style="text-align:center; font-weight:400; margin: 20px 0; color:var(--primary-muted); font-size:0.8rem; letter-spacing:2px;">--- OR MANUALLY OVERRIDE ---</div>
+                    
+                    <form id="reqForm">
+                        <label for="rName">SUBJECT NAME</label><input type="text" id="rName" required><input type="hidden" id="rDemographic" value="none">
+                        <label for="rUrgency">THREAT LEVEL</label><select id="rUrgency" required><option value="critical">⬛ CRITICAL (IMMINENT)</option><option value="high">🔴 HIGH (EMERGENCY)</option><option value="medium" selected>🟠 MEDIUM (URGENT)</option><option value="low">🟢 LOW (STANDARD)</option></select>
+                        <div class="input-row"><div style="flex:1;"><label for="rType">RESOURCE CATEGORY</label><select id="rType" required><option value="Food">🍲 RATIONS</option><option value="Medical">⚕️ MEDICAL</option><option value="Rescue">🚁 EVACUATION</option></select></div><div style="flex:1;"><label for="rReqSkill">REQUIRED OPERATIVE</label><select id="rReqSkill"><option value="general">ANY AVAILABLE</option><option value="medical">MEDICAL SPECIALIST</option><option value="rescue">RESCUE SPECIALIST</option></select></div></div>
+                        <label for="rLoc">EXTRACTION COORDINATES</label><input type="text" id="rLoc" list="rOptions" required>
+                        <button type="submit" class="btn-main" style="border-color:rgba(248, 113, 113, 0.5); color:var(--danger);" id="reqSubmit">BROADCAST SIGNAL TO MESH</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- SUPPLY CACHE & DONATION TRACKING SECTION -->
+            <section id="donate" class="page-section">
+                <div class="form-ui" style="max-width: 900px;">
+                    <h2 class="gradient-text" style="margin-bottom:30px; text-align:center;">📦 REGISTER SUPPLY CACHE</h2>
+                    <form id="donForm" style="max-width: 600px; margin: 0 auto;">
+                        <label for="dName">LOGISTICS ORG / DONOR <span style="color:var(--success);">✔</span></label><input type="text" id="dName" placeholder="E.G. HOPE FOUNDATION" required readonly>
+                        <label for="dItem">ASSET INVENTORY (ITEM NAME)</label><input type="text" id="dItem" placeholder="E.G. FIRST AID KITS, INSULIN, RICE" required>
+                        <div class="input-row">
+                            <div style="flex:1;"><label for="dQuantity">QUANTITY</label><input type="number" id="dQuantity" placeholder="E.G. 50" required min="1"></div>
+                            <div style="flex:1;"><label for="dUnit">UNIT</label><select id="dUnit"><option value="units">UNITS / BOXES</option><option value="kg">KILOGRAMS (KG)</option><option value="liters">LITERS (L)</option></select></div>
+                        </div>
+                        <div class="input-row">
+                            <div style="flex:1;"><label for="dExpiry">EXPIRY DATE (OPTIONAL)</label><input type="date" id="dExpiry"></div>
+                            <div style="flex:1;"><label for="dType">RESOURCE CATEGORY</label><select id="dType" required><option value="Food">RATIONS / PERISHABLES</option><option value="Medical">MEDICAL SUPPLIES</option><option value="Rescue">TACTICAL / RESCUE EQUIPMENT</option></select></div>
+                        </div>
+                        <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 10px; background: rgba(96, 165, 250, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(96, 165, 250, 0.3);">
+                            <input type="checkbox" id="dColdChain" style="width: auto; margin: 0; transform: scale(1.5);">
+                            <label for="dColdChain" style="margin: 0; color: #60A5FA; font-weight: 600;">❄️ REQUIRES COLD-CHAIN LOGISTICS</label>
+                        </div>
+                        
+                        <label style="color:var(--accent);">📸 AI ASSET VERIFICATION (FRAUD PREVENTION)</label>
+                        <div style="display:flex; align-items:center; gap: 15px; margin-bottom: 30px; background:rgba(0,0,0,0.2); padding:10px; border-radius:12px; border:1px solid var(--glass-border);">
+                            <input type="file" id="dImage" accept="image/*" style="margin-bottom:0; border:none; padding:10px; background:transparent;">
+                            <button type="button" class="btn-main action-btn" style="width:auto; padding: 12px 20px; font-size:0.75rem;" onclick="window.verifyAssetImage(event)">👁️ AI SCAN</button>
+                        </div>
+                        
+                        <label for="dLoc">SUPPLY CACHE LOCATION</label><input type="text" id="dLoc" list="dOptions" placeholder="ENTER PICKUP ADDRESS..." required>
+                        <button type="submit" class="btn-main action-btn" id="donSubmit">LOG RESOURCE INTO MATRIX</button>
+                    </form>
+                    
+                    <div id="orgInventoryDashboard" class="role-hidden" data-allowed-roles="org,donor,admin" style="margin-top:50px; padding-top:40px; border-top:1px solid var(--glass-border);">
+                        <h2 class="gradient-text" style="font-size:2rem; margin-bottom:10px; text-align:center;">📡 LIVE LOGISTICS TRACKER</h2>
+                        <p style="text-align:center; color:var(--primary-muted); font-size:0.85rem; margin-bottom: 30px; letter-spacing:1px;">MONITOR EXACTLY WHERE YOUR DONATIONS ARE GOING.</p>
+                        <div id="donorDashboardGrid" class="mission-grid" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ANALYTICS DASHBOARD SECTION -->
+            <section id="dashboard" class="page-section">
+                <div style="text-align:center; margin-bottom: 50px;"><h2 class="gradient-text" style="font-size:3rem;">GLOBAL IMPACT ANALYTICS</h2><p style="color:var(--primary-muted); font-size:0.9rem; letter-spacing:2px; margin-top:10px;">UNITED NATIONS SDG ALIGNMENT METRICS</p></div>
+                <div style="display: flex; justify-content: center; margin-bottom: 40px;"><button class="btn-main" style="width: auto; border-color: #60A5FA; color: #60A5FA;" onclick="window.exportDataCSV(event)">EXPORT LIVE DATA (CSV)</button></div>
+                
+                <div class="features-grid" style="margin-bottom: 40px;">
+                    <div class="feature-card" style="border-top: 3px solid #60A5FA;"><h3 style="color:#60A5FA; font-size:1.1rem;">⏱️ AVG RESPONSE TIME</h3><p style="font-size:2.5rem; font-weight:600; color:var(--accent); margin:10px 0;">-42%</p><p style="color:var(--primary-muted); font-size:0.8rem;">Faster than legacy dispatch via AI Routing</p></div>
+                    <div class="feature-card" style="border-top: 3px solid #4C9F38;"><h3 style="color:#4C9F38; font-size:1.1rem;">📶 MESH RELAY SUCCESS</h3><p style="font-size:2.5rem; font-weight:600; color:var(--accent); margin:10px 0;">94.2%</p><p style="color:var(--primary-muted); font-size:0.8rem;">Offline packets successfully synced</p></div>
+                    <div class="feature-card" style="border-top: 3px solid #FD6925;"><h3 style="color:#FD6925; font-size:1.1rem;">SDG 11: LIVES IMPACTED</h3><p style="font-size:2.5rem; font-weight:600; color:var(--accent); margin:10px 0;" id="sdgRes">0</p><p style="color:var(--primary-muted); font-size:0.8rem;">Vulnerable demographics prioritized via ML</p></div>
+                </div>
+
+                <div class="grid-2col" style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; margin-bottom: 30px;">
+                    <div class="feature-card" style="text-align:left; padding: 30px;"><h4 style="color:var(--accent); font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">📊 RESOURCES DELIVERED</h4><div style="position: relative; width: 100%; height: 250px;"><canvas id="impactChart"></canvas></div></div>
+                    <div class="feature-card" style="text-align:left; padding: 30px;"><h4 style="color:var(--danger); font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">🛡️ TF.JS OPERATIVE FATIGUE</h4><div style="position: relative; width: 100%; height: 250px;"><canvas id="fatigueChart"></canvas></div></div>
+                </div>
+                <div class="grid-2col" style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
+                    <div class="feature-card" style="text-align:left; padding: 30px;"><h4 style="color:#8B5CF6; font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">⚖️ SUPPLY VS. DEMAND (LIVE)</h4><div style="position: relative; width: 100%; height: 250px;"><canvas id="supplyDemandChart"></canvas></div></div>
+                    <div class="feature-card" style="text-align:left; padding: 30px;"><h4 style="color:#FBBF24; font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">👥 VULNERABLE DEMOGRAPHICS</h4><div style="position: relative; width: 100%; height: 250px;"><canvas id="demographicChart"></canvas></div></div>
+                </div>
+            </section>
+
+            <!-- DIAGNOSTICS SECTION -->
+            <section id="admin" class="page-section">
+                <div style="text-align:center; margin-bottom: 50px;"><h2 class="gradient-text" style="font-size:3rem; color:var(--warning);">⚙️ COMMAND & DIAGNOSTICS</h2><p style="color:var(--danger); font-size:0.85rem; letter-spacing:2px; margin-top:10px; font-weight:600;">AUTHORIZED PERSONNEL ONLY: NETWORK STRESS TESTING</p></div>
+                
+                <div style="background:rgba(74, 222, 128, 0.05); padding:30px; border-radius:24px; border:1px solid var(--success); margin-bottom:30px;"><h3 style="color:var(--success); font-size:1.2rem; margin-bottom:15px;">🛡️ ORGANIZATION VERIFICATION QUEUE</h3><div id="orgApprovalQueue" style="max-height: 200px; overflow-y:auto; font-size:0.8rem; margin-bottom:15px;"></div><button class="btn-main action-btn" style="width:auto;" onclick="window.approveAllOrgs()">APPROVE ALL PENDING ORGS</button></div>
+                
+                <div style="background:rgba(255,255,255,0.05); padding:30px; border-radius:24px; border:1px solid var(--glass-border); margin-bottom:30px; text-align:center;"><h3 style="color:var(--success); font-size:1.5rem; margin-bottom:10px;">🧠 LOCAL WEBGPU AI CORE (GEMMA 2B)</h3><p style="color:var(--primary-muted); font-size:0.85rem; margin-bottom:20px;">Download Google's Gemma model directly to device GPU/RAM for 100% offline processing.</p><button class="btn-main action-btn" id="btnLoadLocalAI" onclick="window.loadLocalAI(event)" style="width:auto;">⬇️ BOOT LOCAL AI ENGINE (~1.5GB)</button><div id="aiLoadStatus" style="margin-top:15px; font-weight:600; color:var(--warning); font-size:0.85rem;">STATUS: CLOUD API ACTIVE. LOCAL ENGINE OFFLINE.</div></div>
+                
+                <div class="features-grid">
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">📡 P2P BLE MESH</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Severs cloud link and triggers Bluetooth mesh visualizer.</p><button class="btn-main action-btn" onclick="window.triggerSelfHealingMesh(event)">CUT CONNECTION</button></div>
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">📊 IMPACT PROJECTION</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Extrapolates current stats to a 12-month national scale.</p><button class="btn-main" onclick="window.showImpactProjection(event)">EXTRAPOLATE</button></div>
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">🏛️ NETWORK RESET</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Safely resolve all open missions for a new deployment cycle.</p><button class="btn-cancel" onclick="window.forceResolveAll()">RESET SYSTEM</button></div>
+                </div>
+            </section>
+
+            <!-- PROFILE SECTION (NOW INCLUDES "MY ACTIVE SOS SIGNALS") -->
+            <section id="profile" class="page-section">
+                <div class="form-ui" style="max-width: 800px;">
+                    <h2 id="profName" class="gradient-text" style="font-size:3rem; text-align:center;"></h2>
+                    <p id="profRoleTitle" style="text-align:center; color:var(--success); margin-bottom:30px; font-weight:600; letter-spacing:2px; font-size:0.8rem;">VERIFIED TACTICAL OPERATIVE ✔</p>
+                    <div id="aiProfileBadge" style="background:rgba(255,255,255,0.05); padding:18px; border-radius:12px; border:1px solid var(--glass-border); color:var(--primary); font-weight:600; font-size:0.85rem; margin-bottom:25px; text-align:center; letter-spacing:1px;"></div>
+                    
+                    <!-- 🚨 NEW: MY ACTIVE SIGNALS SECTION (FOR OTP VISIBILITY) 🚨 -->
+                    <div style="background:rgba(248, 113, 113, 0.05); padding:25px; border-radius:16px; margin-bottom:30px; border: 1px solid rgba(248, 113, 113, 0.3);">
+                        <h4 style="color:var(--danger); font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">🚨 MY ACTIVE SOS SIGNALS</h4>
+                        <div id="myActiveSignals" style="font-weight:400; color:var(--primary-muted); font-size:0.85rem; line-height: 1.8; text-align: left;">
+                            No active SOS signals.
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,0.3); padding:25px; border-radius:16px; margin-bottom:30px; border: 1px solid rgba(74, 222, 128, 0.3);">
+                        <p style="font-size:0.8rem; color:var(--success); font-weight:600; margin-bottom:10px; letter-spacing:1px;">🛡️ TF.JS REINFORCEMENT LEARNING METRICS</p>
+                        <div id="trustScoreUI" style="font-size:2.5rem; font-family:var(--font-heading); font-weight:600; color:var(--accent); margin-top:15px;">INDEX: 100%</div>
+                        <button class="btn-cancel" style="margin-top: 15px; padding: 10px; font-size: 0.75rem;" onclick="document.getElementById('repBreakdown').style.display = document.getElementById('repBreakdown').style.display === 'none' ? 'block' : 'none'">📊 VIEW REPUTATION BREAKDOWN</button>
+                        <div id="repBreakdown" style="display:none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.4); border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: var(--primary-muted); line-height: 1.8; text-align:left;"></div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px; margin-bottom: 30px;">
+                        <div style="background:rgba(255,255,255,0.05); padding:25px; border-radius:16px; border:1px solid var(--glass-border);"><h4 style="color:var(--primary); font-size:0.9rem; margin-bottom:15px;">📌 PERSONAL IMPACT</h4><div id="impactStats" style="font-weight:400; color:var(--primary-muted); font-size:0.95rem; line-height: 1.8;"></div></div>
+                        <div style="background:rgba(255,255,255,0.05); padding:25px; border-radius:16px; border:1px solid var(--glass-border);"><h4 style="color:var(--warning); font-size:0.9rem; margin-bottom:15px;">🏆 GLOBAL RANKING</h4><ul id="leaderboardList" style="list-style:none; font-weight:400; font-size:0.85rem; color:var(--primary-muted); text-align:left;"></ul></div>
+                    </div>
+                    <button class="btn-main" style="margin-bottom:15px;" onclick="window.showCryptographicQR()">📱 VIEW CRYPTOGRAPHIC ID (QR)</button>
+                    <div id="qrCodeDisplay" style="display:none; background:#fff; padding:20px; border-radius:12px; margin: 20px auto; width: max-content;"></div>
+                    <button onclick="window.downloadCertificate(event)" class="btn-main action-btn">🎓 EXPORT CLEARANCE CERTIFICATE</button>
+                </div>
+            </section>
+
+            <!-- DECISION ENGINE / VOLUNTEER MAP -->
+            <section id="volunteer" class="page-section">
+                <div style="text-align:center; margin-bottom:40px;"><h2 class="gradient-text" style="font-size:3.5rem;">ETHICAL DECISION MATRIX</h2><p style="color:var(--primary-muted); font-size:0.85rem; letter-spacing:2px; margin-top:10px;"><span style="color:var(--success);">● LIVE</span> Prioritizing resources based on urgency, vulnerability, and distance.</p></div>
+                <div class="map-container"><div id="map"></div></div>
+                <div style="margin-top: 30px; margin-bottom: 45px; display:flex; justify-content:center; gap:15px; flex-wrap:wrap;">
+                    <button class="btn-main" style="width: auto; padding: 14px 25px; font-size:0.75rem; border-color:var(--success); color:var(--success);" onclick="window.initQRScanner()">📷 CONFIRM DELIVERY (QR)</button>
+                    <button class="btn-main" style="width: auto; padding: 14px 25px; font-size:0.75rem;" onclick="window.recenterMap()">📍 CENTER RADAR</button>
+                    <button class="btn-main" style="width: auto; padding: 14px 25px; font-size:0.75rem;" onclick="window.toggleLiveWeather(event)">🌩️ FETCH LIVE WEATHER</button>
+                </div>
+                
+                <div id="qrReaderContainer" style="display:none; max-width:500px; margin: 0 auto 30px auto; background:#fff; padding:10px; border-radius:12px;"><div id="qrReader"></div><button class="btn-cancel" style="width:100%; margin-top:10px;" onclick="window.closeQRScanner()">CLOSE SCANNER</button></div>
+
+                <div class="mission-grid" id="missionGrid"></div>
+                <div id="emptyState" style="text-align: center; margin-top: 60px; color: var(--primary-muted); display: none;"><h3 style="font-size:4rem; margin-bottom:15px; opacity:0.5;">📡</h3><p style="font-size:0.9rem; letter-spacing:2px; font-weight:400;">NO UNRESOLVED SIGNALS DETECTED.</p></div>
+            </section>
+            
+        </main>
+        
+        <!-- MODALS & OVERLAYS (Outside main to ensure perfect z-index) -->
+        <div id="timelineModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
+            <div class="form-ui" style="max-height: 80vh; overflow-y: auto;">
+                <h3 class="gradient-text">⏱️ AUDIT TRAIL</h3>
+                <div id="timelineContent" style="display: flex; flex-direction: column; gap: 15px; padding-left: 10px; text-align: left; margin-top: 20px;"></div>
+                <button class="btn-cancel" onclick="document.getElementById('timelineModal').style.display='none'">CLOSE</button>
+            </div>
+        </div>
+        
+        <div id="otpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
+            <div class="form-ui" style="text-align: center;">
+                <h3 style="color:var(--success); margin-bottom: 10px;">🔐 BENEFICIARY CONFIRMATION</h3>
+                <p style="font-size: 0.8rem; color:var(--primary-muted); margin-bottom: 20px;">To prevent fraud and finalize delivery, enter the 4-digit OTP provided to the beneficiary.</p>
+                <input type="text" id="confirmOtpInput" class="otp-input" placeholder="ENTER 4-DIGIT OTP" maxlength="4">
+                <input type="hidden" id="confirmReqId">
+                <button class="btn-main action-btn" onclick="window.submitOtpConfirm()">VERIFY & FINALIZE MISSION</button>
+                <button class="btn-cancel" onclick="document.getElementById('otpModal').style.display='none'">CANCEL</button>
+            </div>
+        </div>
+        
+        <!-- HIDDEN EXPORT DOM FOR PDF CERTIFICATE -->
+        <div style="width:0; height:0; overflow:hidden;"><div id="certContainer"><div id="certificate" style="padding:60px; background:#0B0E14; border:10px solid #1A1F2B; text-align:center; width:900px; margin: 0 auto; position: relative; color: #fff;"><div style="border: 2px solid rgba(255,255,255,0.2); padding: 40px; height: 100%;"><h1 style="color:#fff; font-family:'Playfair Display', serif; font-size:45px; margin-bottom:10px; font-weight:600;">CERTIFICATE OF CLEARANCE</h1><p style="font-size:16px; margin-top:20px; color:#8A94A6; font-family:'Montserrat', sans-serif; letter-spacing:2px;">THIS CERTIFIES THAT</p><h2 id="certName" style="color:#4ADE80; font-family:'Playfair Display', serif; font-size:50px; margin:30px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display:inline-block; padding-bottom: 10px;"></h2><div style="margin-top: 50px; display:flex; justify-content: space-around; font-weight: 400; font-family:'Montserrat', sans-serif; font-size:12px; color: #8A94A6; letter-spacing:1px;"><div><span style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; display:inline-block; width:200px;">DATE OF ISSUE</span><div id="certDate" style="margin-top: 5px; color:#fff;"></div></div><div><span style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; display:inline-block; width:200px;">AUTHORIZED BY</span><div style="margin-top: 5px; color:#4ADE80;">COMMAND SYSTEM</div></div></div></div></div></div></div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
