@@ -35,6 +35,7 @@ To run this project locally:
 
 ## 🔒 Security Note
 For the safety of the developer and the Google Cloud account, the **active API key has been removed** from this public repository. Full functionality is demonstrated in the **Demo Video** provided in the submission.
+To test the live AI features, please enter a Gemini API Key in the browser console or contact me for a temporary demo key.
 
 ## 📄 License
 This project is licensed under the **MIT License**.
