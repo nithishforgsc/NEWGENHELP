@@ -130,7 +130,9 @@
             <div class="nav-links">
                 <div id="google_translate_element"></div>
 
+                <button class="btn-cta" style="padding: 10px 20px; font-size: 0.75rem; background: #34d399; color:#000;" onclick="window.startGuidedTour()">🚀 WATCH DEMO</button>
                 <button class="nav-link" onclick="window.showPage('home')">OVERVIEW</button>
+                
                 <button class="nav-link" data-allowed-roles="volunteer,admin" onclick="window.showPage('request')">SIGNAL UPLINK</button>
                 <button class="nav-link" data-allowed-roles="donor,org,admin" onclick="window.showPage('donate')">SUPPLY CACHE</button>
                 <button class="nav-link" data-allowed-roles="volunteer,org,admin" onclick="window.showPage('profile')">PROFILE</button>
@@ -139,7 +141,6 @@
                 <button class="btn-cta role-hidden" data-allowed-roles="admin" style="padding: 10px 20px; font-size: 0.75rem;" onclick="window.showPage('admin')">DIAGNOSTICS ⚙️</button>
                 <button class="btn-cta action-btn role-hidden" data-allowed-roles="volunteer,org,admin" style="padding: 10px 20px; font-size: 0.75rem;" onclick="window.showPage('volunteer')">DECISION ENGINE</button>
                 
-                <!-- 🚨 1KM CHAOS ALERT BUTTON - AVAILABLE TO ALL USERS -->
                 <button class="btn-cancel" style="padding: 10px 20px; font-size: 0.75rem; margin-top:0; width:auto; border-radius:30px; border-color:#F87171; color:#F87171; box-shadow: 0 0 10px rgba(248,113,113,0.3);" onclick="window.triggerChaosAlert()">🚨 CHAOS ALERT</button>
                 
                 <button id="navLogoutBtn" class="btn-cancel" style="padding: 10px 20px; font-size: 0.75rem; margin-top:0; width:auto; border-radius:30px;" onclick="window.logoutUser()">DISCONNECT</button>
@@ -159,6 +160,7 @@
                     
                     <div class="hero-actions" style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
                         <button class="btn-main" style="width: auto; padding: 18px 45px; border-color: #F87171; color: #F87171; box-shadow: 0 0 15px rgba(248,113,113,0.4);" onclick="window.triggerChaosAlert()">🚨 TRIGGER 1KM CHAOS ALERT</button>
+                        
                         <button class="btn-main role-hidden" data-allowed-roles="volunteer,admin" style="width: auto; padding: 18px 45px;" onclick="window.showPage('request')">📡 SIGNAL UPLINK</button>
                         <button class="btn-main action-btn role-hidden" data-allowed-roles="volunteer,org,admin" style="width: auto; padding: 18px 45px;" onclick="window.showPage('volunteer')">🗺️ DECISION MATRIX</button>
                     </div>
@@ -176,6 +178,22 @@
                     <h2 class="gradient-text" style="margin-bottom:10px;">📡 SIGNAL UPLINK (SOS)</h2>
                     <p style="color:var(--primary-muted); font-size:0.8rem; margin-bottom:20px;">The real world is messy. Input chaotic data here, and watch the AI structure it for decision-making.</p>
                     
+                    <!-- 📍 NEW MANUAL COORDINATE OVERRIDE WITH "SET HERE" BUTTON -->
+                    <div class="location-manual-box" style="padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--primary-muted); border-radius: 8px; margin: 10px 0 25px 0;">
+                        <label style="font-size: 12px; color: var(--primary-muted); display: block; margin-bottom: 8px; font-weight: 700; letter-spacing: 1px;">📍 MANUAL COORDINATE OVERRIDE</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="manual-coords" placeholder="Long, Lat (e.g. 78.48, 17.38)" 
+                                   style="flex: 1; min-width: 200px; margin-bottom: 0; background: #000; border: 1px solid #444; color: #fff; padding: 12px; font-family: monospace; border-radius: 8px;">
+                            <button type="button" onclick="window.setManualPosition()" style="background: var(--primary); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: 800; border-radius: 8px;">
+                                LOCK
+                            </button>
+                            <button type="button" onclick="window.useCurrentMapView()" style="background: var(--success); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: 800; border-radius: 8px; box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">
+                                📍 SET HERE
+                            </button>
+                        </div>
+                        <p id="uplink-status" style="font-size: 11px; color: #0f0; margin-top: 10px; margin-bottom: 0; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Status: Waiting for Signal...</p>
+                    </div>
+
                     <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
                         <button class="btn-main" style="width:calc(33% - 7px); font-size:0.65rem; padding:10px; border-color:#8B5CF6; color:#8B5CF6;" onclick="window.startSentinelMode()">🎧 ACOUSTIC SENTINEL</button>
                         <button class="btn-main" style="width:calc(33% - 7px); font-size:0.65rem; padding:10px; border-color:var(--warning); color:var(--warning);" onclick="window.startSilentSOS()">🖐️ SILENT SOS (CV)</button>
@@ -187,6 +205,8 @@
                     <div id="silentSosUI" class="elite-ui-box"><h4 style="color:var(--warning); margin-bottom:10px;">🖐️ MEDIA-PIPE SILENT SOS</h4><p style="font-size:0.75rem; color:var(--primary-muted); margin-bottom:10px;">Make a closed fist to trigger distress signal silently without typing.</p><div style="position:relative; width:100%; border-radius:12px; overflow:hidden; border:2px solid var(--warning);"><video id="silentVideo" autoplay playsinline style="width:100%; display:block;"></video><canvas id="silentCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas></div><button class="btn-cancel" style="padding:10px; margin-top:15px;" onclick="window.stopSilentSOS()">DEACTIVATE CAMERA</button></div>
                     
                     <div id="paperBeaconUI" class="elite-ui-box"><h4 style="color:var(--success); margin-bottom:10px;">📄 ENCRYPTED PAPER BEACON</h4><p style="font-size:0.75rem; color:var(--primary-muted); margin-bottom:10px;">For 0% battery scenarios. Operatives scan it to import data.</p><div id="paperBeaconCanvas" style="background:#fff; padding:20px; border-radius:12px; margin: 0 auto; width: max-content;"></div><button class="btn-cancel" style="padding:10px; margin-top:15px;" onclick="document.getElementById('paperBeaconUI').style.display='none'">CLOSE BEACON</button></div>
+                    
+                    <div style="background: rgba(96, 165, 250, 0.1); border: 1px solid rgba(96, 165, 250, 0.3); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center;"><p style="font-size:0.8rem; color: #60A5FA; margin:0; font-weight:600; letter-spacing:1px;">📶 P2P SMS SIMULATION</p><button type="button" class="btn-main" style="width:auto; padding:8px 15px; font-size:0.7rem; border-color:#60A5FA; color:#60A5FA; margin-top:10px;" onclick="window.simulateIncomingSMS()">📥 INJECT RAW SMS SIGNAL</button></div>
                     
                     <div class="ai-input-box">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><p style="font-size:0.75rem; color:var(--accent); font-weight:600; margin:0; letter-spacing:1px;">🤖 MULTI-AGENT DATA STRUCTURING</p><button class="mic-btn" onclick="window.startVoiceAI(event)" title="Speak your emergency">🎤</button></div>
@@ -277,7 +297,10 @@
                 <div style="background:rgba(255,255,255,0.05); padding:30px; border-radius:24px; border:1px solid var(--glass-border); margin-bottom:30px; text-align:center;"><h3 style="color:var(--success); font-size:1.5rem; margin-bottom:10px;">🧠 LOCAL WEBGPU AI CORE (GEMMA 2B)</h3><p style="color:var(--primary-muted); font-size:0.85rem; margin-bottom:20px;">Download Google's Gemma model directly to device GPU/RAM for 100% offline processing.</p><button class="btn-main action-btn" id="btnLoadLocalAI" onclick="window.loadLocalAI(event)" style="width:auto;">⬇️ BOOT LOCAL AI ENGINE (~1.5GB)</button><div id="aiLoadStatus" style="margin-top:15px; font-weight:600; color:var(--warning); font-size:0.85rem;">STATUS: CLOUD API ACTIVE. LOCAL ENGINE OFFLINE.</div></div>
                 
                 <div class="features-grid">
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">🧠 PREDICTIVE AI</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Analyzes clustering via Spatial Regression.</p><button class="btn-main" onclick="window.predictSuffering(event)">RUN PREDICTION</button></div>
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">🏙️ DIGITAL TWIN</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Injects 100 virtual nodes into the grid instantly.</p><button class="btn-main" style="border-color:rgba(255,255,255,0.4);" onclick="window.runDigitalTwin()">INITIATE STRESS TEST</button></div>
                     <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">📡 P2P BLE MESH</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Severs cloud link and triggers Bluetooth mesh visualizer.</p><button class="btn-main action-btn" onclick="window.triggerSelfHealingMesh(event)">CUT CONNECTION</button></div>
+                    <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">🎬 SCRIPTED SCENARIO</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Injects multi-skill requests for Ethical AI routing.</p><button class="btn-main" style="border-color:var(--warning); color:var(--warning);" onclick="window.runDemoScenario()">LOAD SCENARIO</button></div>
                     <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">📊 IMPACT PROJECTION</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Extrapolates current stats to a 12-month national scale.</p><button class="btn-main" onclick="window.showImpactProjection(event)">EXTRAPOLATE</button></div>
                     <div class="feature-card"><h3 style="font-size:1.2rem; margin-bottom:10px;">🏛️ NETWORK RESET</h3><p style="font-size:0.8rem; color:var(--primary-muted); margin-bottom:20px;">Safely resolve all open missions for a new deployment cycle.</p><button class="btn-cancel" onclick="window.forceResolveAll()">RESET SYSTEM</button></div>
                 </div>
@@ -290,7 +313,7 @@
                     <p id="profRoleTitle" style="text-align:center; color:var(--success); margin-bottom:30px; font-weight:600; letter-spacing:2px; font-size:0.8rem;">VERIFIED TACTICAL OPERATIVE ✔</p>
                     <div id="aiProfileBadge" style="background:rgba(255,255,255,0.05); padding:18px; border-radius:12px; border:1px solid var(--glass-border); color:var(--primary); font-weight:600; font-size:0.85rem; margin-bottom:25px; text-align:center; letter-spacing:1px;"></div>
                     
-                    <!-- 🚨 NEW: MY ACTIVE SIGNALS SECTION (FOR OTP VISIBILITY) 🚨 -->
+                    <!-- 🚨 MY ACTIVE SIGNALS SECTION (FOR OTP VISIBILITY) 🚨 -->
                     <div style="background:rgba(248, 113, 113, 0.05); padding:25px; border-radius:16px; margin-bottom:30px; border: 1px solid rgba(248, 113, 113, 0.3);">
                         <h4 style="color:var(--danger); font-size:0.9rem; margin-bottom:15px; letter-spacing:1px;">🚨 MY ACTIVE SOS SIGNALS</h4>
                         <div id="myActiveSignals" style="font-weight:400; color:var(--primary-muted); font-size:0.85rem; line-height: 1.8; text-align: left;">
@@ -333,7 +356,7 @@
             
         </main>
         
-        <!-- MODALS & OVERLAYS (Outside main to ensure perfect z-index) -->
+        <!-- MODALS & OVERLAYS -->
         <div id="timelineModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
             <div class="form-ui" style="max-height: 80vh; overflow-y: auto;">
                 <h3 class="gradient-text">⏱️ AUDIT TRAIL</h3>
@@ -360,5 +383,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
-
