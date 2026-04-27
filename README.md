@@ -1,41 +1,76 @@
-# NEWGENHELP
-[SMART RESOURCE ALLOCATION] DATA DRIVEN VOLUNTEER COORDINATION FOR SOCIAL IMPACT
+🚀 NEWGENHELP
 
-**Google Solution Challenge 2026**
+📌 Overview
 
-Addressing **UN Sustainable Development Goal 11.5**: Substantially reduce the number of deaths and the number of people affected by disasters.
+NEWGENHELP is an AI-powered web application designed to provide intelligent assistance using Google's Gemini API and Firebase backend services. It delivers fast, responsive, and user-friendly interactions through a simple web interface.
 
-## 🚀 The Vision
-NEWGENHELP is a decentralized emergency response system designed for "The Golden Hour" of a disaster. When communication lines go down, our system uses a combination of AI triage and peer-to-peer networking to ensure help reaches those who need it most, regardless of internet connectivity.
+---
 
-## 🛠️ Google Technologies Used
-* **Gemini 1.5 Flash:** Powers the core "Ethical Triage Engine" to categorize SOS messages based on severity.
-* **Firebase:** Handles real-time data synchronization between the victim app and the tactical dashboard.
-* **Google Maps Platform:** Provides the visual "Tactical Map" for emergency responders to locate survivors.
-* **Gemma (via WebLLM):** (Planned/Implemented) For local, offline AI processing when the internet is unavailable.
+✨ Features
 
-## 📦 MVP Features
-1.  **Smart SOS:** Victims can send messages that are automatically analyzed by AI.
-2.  **Tactical Dashboard:** A bird's-eye view for rescuers to see high-priority targets.
-3.  **Ethical Decision Matrix:** Ensures aid is distributed based on medical need, not just location.
+- 🤖 AI-powered responses using Gemini
+- 🔥 Real-time data handling with Firebase
+- 🌐 Fully deployed using GitHub Pages
+- ⚡ Fast and responsive UI
+- 🔒 Basic API security with domain restriction
 
-## ⚙️ Setup & Installation
-To run this project locally:
+---
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/nithishforgsc/NEWGENHELP.git](https://github.com/nithishforgsc/NEWGENHELP.git)
-    ```
-2.  **Add your API Key:**
-    * Open `script.js`.
-    * Find the constant `GEMINI_API_KEY`.
-    * Replace `"PASTE_YOUR_KEY_HERE"` with your actual Google AI Studio API Key.
-3.  **Launch:**
-    * Open `index.html` in any modern web browser (Chrome recommended).
+🛠️ Tech Stack
 
-## 🔒 Security Note
-For the safety of the developer and the Google Cloud account, the **active API key has been removed** from this public repository. Full functionality is demonstrated in the **Demo Video** provided in the submission.
-To test the live AI features, please enter a Gemini API Key in the browser console or contact me for a temporary demo key.
+- Frontend: HTML, CSS, JavaScript
+- Backend Services: Firebase Realtime Database
+- AI Integration: Google Gemini API
+- Deployment: GitHub Pages
 
-## 📄 License
-This project is licensed under the **MIT License**.
+---
+
+🚀 Live Demo
+
+👉 https://nithishforgsc.github.io/NEWGENHELP/
+
+---
+
+⚙️ How It Works
+
+1. User enters input in the web interface
+2. Request is sent to Gemini API
+3. Response is processed and displayed
+4. Firebase is used for storing/retrieving data
+
+---
+
+🔐 Security Note
+
+- API keys are restricted using domain-based controls
+- Temporary database rules are applied for safe demonstration
+- Keys are rotated after deployment
+
+---
+
+📦 Setup Instructions (For Developers)
+
+1. Clone the repository
+2. Add your own API keys in the JavaScript file
+3. Deploy using GitHub Pages
+
+---
+
+📌 Future Improvements
+
+- Backend integration for stronger security
+- User authentication system
+- Advanced AI features
+- Improved UI/UX
+
+---
+
+👨‍💻 Author
+
+Developed by NITHISH KAKARLA
+
+---
+
+📄 MIT License
+
+This project is for educational and demonstration purposes.
