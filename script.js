@@ -1,7 +1,14 @@
 import { db } from "./firebase.js";
 import { ref, push, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const GEMINI_API_KEY = "INSERT_YOUR_GEMINI_API_KEY_HERE"; 
+// FIXED: Correct Gemini API Key ending in '0'
+const GEMINI_API_KEY = "AIzaSyDA1xeKiu-blffTnsQW1LLy8TSQjJ_h5v8"; 
+if (
+  location.hostname !== "nithishforgsc.github.io" &&
+  location.hostname !== "localhost"
+) {
+  throw new Error("Unauthorized");
+}
 
 // --- UTILITIES & MULTI-LANGUAGE SYSTEM ---
 function sanitize(input) { 
@@ -233,7 +240,7 @@ try {
 
             syncUserToLeaderboard(userName); updateUserStatsUI(); 
             initDashboardCharts(); 
-            window.startLiveTracking();
+            window.startLiveTracking(); // 🏆 START REAL-TIME GPS ON LOGIN
         }
     }
 
@@ -258,9 +265,9 @@ try {
         if(statsEl) statsEl.innerText = `🏅 IMPACT: ${points} | 🔥 STREAK: ${streak} | ${level}`;
     }
 
-    // --- 4. MAP & LOCATION ---
+    // --- 4. MAP & LOCATION (UPGRADED) ---
     window.deckMap = null; 
-    window.userPos =[17.3850, 78.4867]; // Fallback to Hyderabad
+    window.userPos =[78.4867, 17.3850]; // Fallback to Hyderabad [Lng, Lat]
     window.heatVisible = true; 
     window.liveVolunteersData = {}; 
     window.activeRouteGeoJSON = null; 
@@ -269,27 +276,139 @@ try {
     let gpsWatchId = null;
 
     window.recenterMap = function() { 
-        if (window.deckMap) window.deckMap.setProps({ initialViewState: { longitude: window.userPos[1], latitude: window.userPos[0], zoom: 14, pitch: 45, transitionDuration: 1000 } }); 
+        if (window.deckMap) window.deckMap.setProps({ initialViewState: { longitude: window.userPos[0], latitude: window.userPos[1], zoom: 14, pitch: 45, transitionDuration: 1000 } }); 
     };
     function simpleGeoHash(lat, lng) { return lat.toFixed(2) + ":" + lng.toFixed(2); }
     
+    // 🏆 FIXED: The Battery-Friendly GPS Tracker with proper Longitude/Latitude order for Deck.gl
     window.startLiveTracking = function() {
         if (!navigator.geolocation) {
-            window.showToast("GPS not supported by your browser.", "error");
+            window.showToast("GPS not supported.", "error");
             return;
         }
+
         gpsWatchId = navigator.geolocation.watchPosition(
             (pos) => {
-                window.userPos =[parseFloat(pos.coords.latitude), parseFloat(pos.coords.longitude)];
+                window.userPos = [pos.coords.longitude, pos.coords.latitude];
+                
                 if (window.deckMap) renderMissions();
-                const name = localStorage.getItem("userName"); 
-                if (name && navigator.onLine && !simFailure && db) { 
-                    set(ref(db, "liveVolunteers/" + name), { lat: pos.coords.latitude, lng: pos.coords.longitude, time: Date.now() }).catch(()=>{}); 
+
+                const name = localStorage.getItem("userName") || "Volunteer_Alpha"; 
+                
+                if (navigator.onLine && db) { 
+                    set(ref(db, "liveVolunteers/" + name), { 
+                        lng: pos.coords.longitude, 
+                        lat: pos.coords.latitude, 
+                        time: Date.now() 
+                    }).catch((e) => console.error("Firebase Sync Error:", e)); 
                 }
             }, 
-            (err) => { if(err.code === 1) window.showToast("GPS Permission Denied. Using fallback coordinates.", "warning"); }, 
-            { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+            (err) => { 
+                console.warn("GPS Error:", err);
+                if(!window.userPos) window.userPos = [78.4867, 17.3850]; 
+            }, 
+            { enableHighAccuracy: false, maximumAge: 2000, timeout: 5000 }
         );
+    };
+
+    // 📍 NEW MANUAL COORDINATE OVERRIDE WITH DECK.GL MAP LOCK
+    window.setManualPosition = function() {
+        const input = document.getElementById('manual-coords').value;
+        const statusEl = document.getElementById('uplink-status');
+        
+        if (!input.includes(',')) {
+            window.showToast("Use format: Longitude, Latitude", "error");
+            return;
+        }
+
+        const parts = input.split(',');
+        const lng = parseFloat(parts[0].trim());
+        const lat = parseFloat(parts[1].trim());
+
+        if (isNaN(lng) || isNaN(lat)) {
+            window.showToast("Invalid Coordinates", "error");
+            return;
+        }
+
+        // Disable live tracking if manual override is used so it doesn't snap back
+        if (typeof gpsWatchId !== 'undefined' && gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+        }
+
+        window.userPos =[lng, lat];
+
+        if(statusEl) {
+            statusEl.innerText = "STATUS: SIGNAL LOCKED (MANUAL)";
+            statusEl.style.color = "var(--success)";
+        }
+        
+        const name = localStorage.getItem("userName") || "Volunteer_Alpha";
+        if (typeof db !== 'undefined' && db) {
+            set(ref(db, "liveVolunteers/" + name), {
+                lng: lng,
+                lat: lat,
+                time: Date.now()
+            }).then(() => {
+                window.showToast("Firebase Uplink Active: " + lng + ", " + lat, "success", true);
+                if (typeof renderMissions === 'function') renderMissions();
+                if (window.deckMap && typeof window.recenterMap === 'function') window.recenterMap();
+            });
+        }
+    };
+
+    // 📍 NEW: USE CURRENT MAP VIEW AS LOCATION
+    window.useCurrentMapView = function() {
+        if (!window.deckMap) {
+            window.showToast("Map not loaded. Open Decision Matrix first.", "warning");
+            return;
+        }
+
+        let lng = window.userPos[0];
+        let lat = window.userPos[1];
+        
+        try {
+            const viewState = window.deckMap.viewManager ? window.deckMap.viewManager.getViewports()[0] : null;
+            if (viewState) {
+                lng = viewState.longitude;
+                lat = viewState.latitude;
+            } else if (window.deckMap.viewState && window.deckMap.viewState.main) {
+                lng = window.deckMap.viewState.main.longitude;
+                lat = window.deckMap.viewState.main.latitude;
+            }
+        } catch(e) {
+            console.warn("Could not get view state.", e);
+        }
+
+        if (typeof gpsWatchId !== 'undefined' && gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+        }
+
+        window.userPos = [lng, lat];
+
+        const locInput = document.getElementById('manual-coords');
+        if (locInput) locInput.value = `${lng.toFixed(4)}, ${lat.toFixed(4)}`;
+        
+        const rLocInput = document.getElementById('rLoc');
+        if (rLocInput) rLocInput.value = `${lat.toFixed(4)}, ${lng.toFixed(4)} (MANUAL LOCK)`;
+
+        const statusEl = document.getElementById('uplink-status');
+        if (statusEl) {
+            statusEl.innerText = "STATUS: LOCKED TO MAP VIEW";
+            statusEl.style.color = "var(--success)";
+        }
+
+        const name = localStorage.getItem("userName") || "Volunteer_Alpha";
+        if (typeof db !== 'undefined' && db) {
+            set(ref(db, "liveVolunteers/" + name), {
+                lng: lng,
+                lat: lat,
+                time: Date.now()
+            });
+        }
+
+        if (typeof renderMissions === 'function') renderMissions();
+        if (window.AudioEngine && !window.AudioEngine.isMuted) window.AudioEngine.playMechanicalClick();
+        window.showToast("📍 Location Locked to Map Center", "success", true);
     };
 
     window.toggleHeatmap = function() { if (!window.deckMap) return; window.heatVisible = !window.heatVisible; renderMissions(); };
@@ -523,7 +642,7 @@ try {
             if (typeof deck !== 'undefined' && !window.deckMap) { 
                 try { 
                     if (typeof maplibregl !== 'undefined') window.mapboxgl = maplibregl; 
-                    window.deckMap = new deck.DeckGL({ container: 'map', map: window.mapboxgl, initialViewState: { longitude: window.userPos[1], latitude: window.userPos[0], zoom: 13, pitch: 45, bearing: 0 }, controller: true, mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', layers:[] }); 
+                    window.deckMap = new deck.DeckGL({ container: 'map', map: window.mapboxgl, initialViewState: { longitude: window.userPos[0], latitude: window.userPos[1], zoom: 13, pitch: 45, bearing: 0 }, controller: true, mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', layers:[] }); 
                 } catch(e) {} 
                 setTimeout(() => { renderMissions(); }, 500); 
             } else { renderMissions(); }
@@ -607,12 +726,13 @@ try {
         if (!window.deckMap || typeof deck === 'undefined') return;
         try { 
             if(navigator.onLine && !simFailure) { 
-                const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${p1[1]},${p1[0]};${p2[1]},${p2[0]}?geometries=geojson`); 
+                // p1 is now [lng, lat], p2 is [lat, lng] from Firebase
+                const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${p1[0]},${p1[1]};${p2[1]},${p2[0]}?geometries=geojson`); 
                 const data = await response.json(); 
                 if(data.routes && data.routes[0]) { window.activeRouteGeoJSON = data.routes[0].geometry; renderMissions(); return; } 
             } 
         } catch(e) {}
-        window.activeRouteGeoJSON = { type: "LineString", coordinates: [[p1[1], p1[0]],[p2[1], p2[0]] ] }; 
+        window.activeRouteGeoJSON = { type: "LineString", coordinates: [[p1[0], p1[1]],[p2[1], p2[0]] ] }; 
         renderMissions();
     }
 
@@ -639,7 +759,7 @@ try {
         let validDonors = localDb.dons.filter(d => (d.status === 'open' || (d.status === 'reserved' && req.acceptedBy === volName)) && (!req.type || req.type === d.type) && d.quantity > 0);
         return validDonors.sort((a,b) => { 
             if(a.expiry !== 'none' && b.expiry !== 'none') return new Date(a.expiry) - new Date(b.expiry); 
-            return parseFloat(calculateDistance(a.lat, a.lng, req.lat, req.lng)) - parseFloat(calculateDistance(b.lat, b.lng, req.lat, req.lng)); 
+            return parseFloat(calculateDistance(window.userPos[1], window.userPos[0], req.lat, req.lng)) - parseFloat(calculateDistance(b.lat, b.lng, req.lat, req.lng)); 
         })[0] || null;
     }
 
@@ -705,7 +825,7 @@ try {
                 if(req.urgency === 'critical') dynamicPoints *= 2; 
             }
             
-            const distToYou = parseFloat(calculateDistance(window.userPos[0], window.userPos[1], req.lat, req.lng)); 
+            const distToYou = parseFloat(calculateDistance(window.userPos[1], window.userPos[0], req.lat, req.lng)); 
             let ethicalScore = calculateEthicalScore(req, volSkill, distToYou); 
             let fatiguePenalty = (localMLStats.consecutiveHeavyMissions >= 3 && (req.reqSkill === 'rescue' || req.reqSkill === 'medical')) ? 40 : 0;
             let mObj = { req, donor: bestDonor, ethicalScore, dynamicPoints, spoilageRisk, fatiguePenalty: fatiguePenalty > 0, distToYou }; 
@@ -760,8 +880,8 @@ try {
         try {
             if (activeMissionObj) {
                 const { req, donor } = activeMissionObj; let p1, p2;
-                if (req.status === 'accepted' && donor) { p1 = window.userPos; p2 =[donor.lat, donor.lng]; } 
-                else if (req.status === 'picked' && donor) { p1 =[donor.lat, donor.lng]; p2 =[req.lat, req.lng]; }
+                if (req.status === 'accepted' && donor) { p1 = [window.userPos[0], window.userPos[1]]; p2 =[donor.lng, donor.lat]; } 
+                else if (req.status === 'picked' && donor) { p1 =[donor.lng, donor.lat]; p2 =[req.lng, req.lat]; }
                 if (p1 && p2) { 
                     if (!window.activeRouteCoords || window.activeRouteCoords.p1.join() !== p1.join() || window.activeRouteCoords.p2.join() !== p2.join()) { 
                         window.activeRouteCoords = {p1, p2}; fetchRealRoute(p1, p2); 
@@ -784,7 +904,19 @@ try {
         if (window.heatVisible && activeReqs && activeReqs.length > 0) layers.push(new deck.HeatmapLayer({ id: 'crisis-heatmap', data: activeReqs, getPosition: d =>[d.lng, d.lat], getWeight: d => d.urgency === 'critical' ? 10 : (d.urgency === 'high' ? 5 : 2), radiusPixels: 70, colorRange: [[11, 14, 20, 0],[74, 222, 128, 100],[251, 191, 36, 180],[248, 113, 113, 255]], intensity: 1.2 }));
         if (activeReqs && activeReqs.length > 0) layers.push(new deck.ColumnLayer({ id: 'mission-pillars', data: activeReqs, diskResolution: 6, radius: 120, extruded: true, pickable: true, elevationScale: 40, getPosition: d =>[d.lng, d.lat], getFillColor: d => d.urgency === 'critical' ?[255, 255, 255, 230] :[248, 113, 113, 230], getElevation: d => d.urgency === 'critical' ? 60 : 25, autoHighlight: true }));
         if (openDonors && openDonors.length > 0) layers.push(new deck.ColumnLayer({ id: 'donor-pillars', data: openDonors, diskResolution: 6, radius: 80, extruded: true, elevationScale: 20, getPosition: d =>[d.lng, d.lat], getFillColor:[74, 222, 128, 200], getElevation: d => 15, pickable: true }));
-        layers.push(new deck.ScatterplotLayer({ id: 'user-location', data:[{position:[window.userPos[1], window.userPos[0]]}], getPosition: d => d.position, getFillColor:[255, 255, 255, 255], getLineColor:[96, 165, 250, 255], lineWidthMinPixels: 3, getRadius: 60, pickable: true, stroked: true }));
+        
+        // FIXED: Scatterplot layer for user position expects [Lng, Lat]
+        layers.push(new deck.ScatterplotLayer({ 
+            id: 'user-location', 
+            data:[{ position: window.userPos }], 
+            getPosition: d => d.position, 
+            getFillColor:[255, 255, 255, 255], 
+            getLineColor:[96, 165, 250, 255], 
+            lineWidthMinPixels: 3, 
+            getRadius: 50, 
+            pickable: true, 
+            stroked: true 
+        }));
         
         let vols =[];
         if (window.liveVolunteersData) { 
@@ -794,7 +926,7 @@ try {
         
         // 🌟 WOW FACTOR #1: P2P MESH NETWORK VISUALIZER
         if (window.meshActive && vols.length > 0) {
-            const meshLinks = vols.map(v => ({ source: [window.userPos[1], window.userPos[0]], target:[v.lng, v.lat] }));
+            const meshLinks = vols.map(v => ({ source: window.userPos, target:[v.lng, v.lat] }));
             layers.push(new deck.ArcLayer({
                 id: 'mesh-network-links', data: meshLinks,
                 getSourcePosition: d => d.source, getTargetPosition: d => d.target,
@@ -826,7 +958,7 @@ try {
                 batteryLevel = battery.level * 100;
             } catch(e) {}
         }
-        let dist = parseFloat(calculateDistance(window.userPos[0], window.userPos[1], req.lat, req.lng));
+        let dist = parseFloat(calculateDistance(window.userPos[1], window.userPos[0], req.lat, req.lng));
         
         if (batteryLevel < 20 && dist > 5) { 
             window.showToast("⚠️ VIABILITY WARNING: Battery too low for this distance.", "error", true); 
@@ -956,8 +1088,8 @@ try {
         if (confirm("🚨 DANGER: Broadcast 1KM Proximity Chaos Alert to all users?")) {
             push(ref(db, "chaos"), {
                 creator: localStorage.getItem("userName") || "UNKNOWN",
-                lat: window.userPos[0],
-                lng: window.userPos[1],
+                lat: window.userPos[1], // Latitude is index 1
+                lng: window.userPos[0], // Longitude is index 0
                 timestamp: Date.now()
             });
             window.showToast("CHAOS ALERT BROADCASTED SECURELY.", "success", true);
@@ -968,7 +1100,7 @@ try {
         document.getElementById('reqForm')?.addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('reqSubmit'); if(btn) { btn.disabled = true; btn.innerText = "PROCESSING..."; }
             try {
-                const locStr = sanitize(document.getElementById('rLoc').value); let coords = (locStr === "CURRENT GPS LOCATION") ? { lat: window.userPos[0], lon: window.userPos[1] } : await getCoords(locStr);
+                const locStr = sanitize(document.getElementById('rLoc').value); let coords = (locStr === "CURRENT GPS LOCATION") ? { lat: window.userPos[1], lon: window.userPos[0] } : await getCoords(locStr);
                 if(coords) {
                     const otp = Math.floor(1000 + Math.random() * 9000).toString();
                     const newData = { 
@@ -1007,7 +1139,7 @@ try {
         document.getElementById('donForm')?.addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('donSubmit'); if(btn) { btn.disabled = true; btn.innerText = "PROCESSING..."; }
             try {
-                const locStr = sanitize(document.getElementById('dLoc').value); let coords = (locStr === "CURRENT GPS LOCATION") ? { lat: window.userPos[0], lon: window.userPos[1] } : await getCoords(locStr);
+                const locStr = sanitize(document.getElementById('dLoc').value); let coords = (locStr === "CURRENT GPS LOCATION") ? { lat: window.userPos[1], lon: window.userPos[0] } : await getCoords(locStr);
                 if(coords) {
                     const newData = { id: Date.now(), donorName: localStorage.getItem("userName"), name: sanitize(document.getElementById('dName').value), item: sanitize(document.getElementById('dItem').value), quantity: document.getElementById('dQuantity').value, unit: document.getElementById('dUnit').value, expiry: document.getElementById('dExpiry').value || 'none', coldChain: document.getElementById('dColdChain').checked, type: document.getElementById('dType').value, lat: coords.lat + (Math.random() - 0.5) * 0.005, lng: coords.lon + (Math.random() - 0.5) * 0.005, locationStr: locStr, status: 'open', version: Date.now() };
                     localDb.dons.push(newData);
@@ -1100,7 +1232,7 @@ try {
                     
                     // If it's not my own alert and happened in the last 10 minutes
                     if(alertData.creator !== currentUser && alertData.timestamp && (Date.now() - alertData.timestamp) < 600000) {
-                        let dist = parseFloat(calculateDistance(window.userPos[0], window.userPos[1], alertData.lat, alertData.lng));
+                        let dist = parseFloat(calculateDistance(window.userPos[1], window.userPos[0], alertData.lat, alertData.lng));
                         if(dist <= 1.0) {
                             window.showToast(`🚨 ATMOSPHERIC ANOMALY / CHAOS DETECTED!\nDistance: ${dist.toFixed(2)} KM\nBrace for impact.`, "tour", true);
                             document.body.classList.add('chaos-screen-pulse');
@@ -1184,7 +1316,7 @@ try {
     window.toggleLiveWeather = async function(event) { 
         const btn = event.target; const originalText = btn.innerText; btn.innerText = "🌩️ LINKING..."; 
         try { 
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${window.userPos[0]}&longitude=${window.userPos[1]}&current_weather=true`); 
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${window.userPos[1]}&longitude=${window.userPos[0]}&current_weather=true`); 
             const data = await res.json(); const w = data.current_weather; 
             let hazard = "🟢 CLEAR"; if(w.windspeed > 40) hazard = "🔴 HIGH WIND"; if(w.temperature > 40 || w.temperature < 5) hazard = "🟠 EXTREME TEMP"; 
             window.showToast(`🛰️ WEATHER:\nTemp: ${w.temperature}°C\nWind: ${w.windspeed} km/h\nHazard: ${hazard}`, "info", true); 
@@ -1205,9 +1337,6 @@ try {
         const secretData = JSON.stringify({ operative: localStorage.getItem("userName"), trust_index: getAdvancedTrustScore(), timestamp: Date.now() }); 
         new QRCode(qrDiv, { text: secretData, width: 150, height: 150, colorDark : "#000000", colorLight : "#ffffff" }); qrDiv.style.display = "block"; 
     };
-    
-    // 🌟 REMOVED FAKE DATA GENERATORS FOR PRODUCTION
-    // (runDemoScenario, runDigitalTwin, predictSuffering have been removed to prevent fake data injection)
 
     // 🌟 TRIGGER MESH NETWORK VISUALIZER 
     window.triggerSelfHealingMesh = function(event) { 
@@ -1224,7 +1353,7 @@ try {
             renderMissions();
         } 
     };
-
+    
     window.showImpactProjection = async function(event) { 
         const btn = event ? event.target : null; if(btn) { btn.innerText = "📊 CALCULATING..."; btn.disabled = true; } 
         const total = localDb.completed || 1; 
@@ -1294,9 +1423,9 @@ try {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') { const response = await DeviceOrientationEvent.requestPermission(); if (response !== 'granted') throw new Error("Sensor permission denied"); } 
             arOrientationHandler = (e) => { 
                 let heading = e.webkitCompassHeading || Math.abs(e.alpha - 360); if (heading === undefined || heading === null) return; 
-                const dLon = (targetLng - window.userPos[1]) * Math.PI / 180; const lat1 = window.userPos[0] * Math.PI / 180; const lat2 = targetLat * Math.PI / 180; 
+                const dLon = (targetLng - window.userPos[0]) * Math.PI / 180; const lat1 = window.userPos[1] * Math.PI / 180; const lat2 = targetLat * Math.PI / 180; 
                 let bearing = Math.atan2(Math.sin(dLon) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)) * 180 / Math.PI; bearing = (bearing + 360) % 360; 
-                arrow.style.transform = `translate(-50%, -50%) rotate(${bearing - heading}deg)`; distUI.innerText = `${calculateDistance(window.userPos[0], window.userPos[1], targetLat, targetLng)} KM TO TARGET`; 
+                arrow.style.transform = `translate(-50%, -50%) rotate(${bearing - heading}deg)`; distUI.innerText = `${calculateDistance(window.userPos[1], window.userPos[0], targetLat, targetLng)} KM TO TARGET`; 
             }; 
             window.addEventListener('deviceorientationabsolute', arOrientationHandler); window.addEventListener('deviceorientation', arOrientationHandler); 
         } catch (e) { window.showToast("AR Compass requires camera and sensor access (HTTPS).", "error"); window.closeAR(); } 
@@ -1310,7 +1439,7 @@ try {
         if(!navigator.vibrate) return window.showToast("Vibration API not supported on this device.", "error"); 
         if(btn) { btn.innerText = "📳 SONAR ACTIVE"; btn.classList.add('haptic-pulse'); window.activeHapticBtn = btn; } 
         window.hapticInterval = setInterval(() => { 
-            let distMeters = parseFloat(calculateDistance(window.userPos[0], window.userPos[1], targetLat, targetLng)) * 1000; 
+            let distMeters = parseFloat(calculateDistance(window.userPos[1], window.userPos[0], targetLat, targetLng)) * 1000; 
             if (distMeters < 50) navigator.vibrate([200, 100, 200, 100, 200]); else if (distMeters < 200) navigator.vibrate([150, 300, 150]); else if (distMeters < 1000) navigator.vibrate([100]); else navigator.vibrate([50]); 
         }, 2500); 
     };
